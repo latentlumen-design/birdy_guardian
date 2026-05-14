@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>버디 가디언 (Birdy Guardian)</title>
+    <!-- 폰트 및 스타일 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard-dynamic-subset.css">
+    
+    <!-- 라이브러리: GSAP, ScrollTrigger, Lenis(부드러운 스크롤), Three.js(3D 뷰어) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script src="https://unpkg.com/lenis@1.1.9/dist/lenis.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/controls/OrbitControls.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #FDFCF8;
+            --surface-color: #F5F3EC;
+            --text-main: #2A2826;
+            --text-muted: #8C867C;
+            --accent-color: #BBA58F;
+            --product-beige: #E6DFD3;
+            --product-brown: #7A6250;
+            --font-family: 'Pretendard', sans-serif;
+            --header-height: 80px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            overflow-x: hidden;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            width: 100%;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 24px;
+        }
+
+        .text-gradient {
+            background: linear-gradient(135deg, var(--text-main), var(--text-muted));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        /* --- Header --- */
+        header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            height: var(--header-height);
+            z-index: 100;
+            transition: all 0.4s ease;
+        }
+        header.scrolled {
+            background: rgba(253, 252, 248, 0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        .header-inner {
+            display: flex; justify-content: space-between; align-items: center; height: 100%;
+        }
+        .logo { font-weight: 700; font-size: 1.125rem; display: flex; align-items: center; gap: 8px; }
+        .logo svg { color: var(--accent-color); }
+        .nav-links { display: flex; gap: 2rem; align-items: center; }
+        .nav-links a { text-decoration: none; color: var(--text-muted); font-size: 0.95rem; font-weight: 500; transition: color 0.3s; }
+        .nav-links a:hover { color: var(--text-main); }
+        .buy-btn {
+            background-color: var(--text-main); color: var(--bg-color); border: none;
+            padding: 0.6rem 1.25rem; border-radius: 30px; font-weight: 600; cursor: pointer;
+            transition: transform 0.3s, background-color 0.3s;
+        }
+        .buy-btn:hover { transform: scale(1.05); background-color: var(--text-muted); }
+
+        /* --- 1. Hero Section --- */
+        .hero {
+            position: relative; min-height: 100vh; display: flex; align-items: center;
+            padding-top: var(--header-height); overflow: hidden;
+        }
+        .hero-bg-blur {
+            position: absolute; top: -20%; left: -10%; width: 60%; height: 60%;
+            background: radial-gradient(circle, #D9CDBF 0%, transparent 70%);
+            filter: blur(100px); opacity: 0.5; z-index: -1; border-radius: 50%;
+        }
+        .hero-container { display: flex; align-items: center; justify-content: space-between; gap: 4rem; }
+        .hero-content { flex: 1; max-width: 600px; }
+        .hero-badge {
+            display: inline-block; padding: 0.4rem 1rem; background-color: var(--surface-color);
+            color: var(--text-muted); border-radius: 20px; font-size: 0.85rem; font-weight: 600;
+            margin-bottom: 1.5rem; border: 1px solid rgba(0,0,0,0.05);
+        }
+        .hero-title { font-size: 3.5rem; font-weight: 700; line-height: 1.2; margin-bottom: 1.5rem; letter-spacing: -0.02em; }
+        .hero-desc { font-size: 1.125rem; color: var(--text-muted); margin-bottom: 2.5rem; }
+        .hero-visual { flex: 1; display: flex; justify-content: center; position: relative; }
+        .window-mockup {
+            width: 400px; height: 500px; background: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.1) 100%);
+            border: 1px solid rgba(255,255,255,0.3); backdrop-filter: blur(10px); border-radius: 20px;
+            display: flex; justify-content: center; align-items: center; position: relative;
+        }
+        .device-mockup { position: relative; width: 140px; height: 140px; }
+        .device-body {
+            position: absolute; top: 30px; left: 0; width: 140px; height: 110px;
+            background: var(--product-beige); border-radius: 70px 70px 60px 60px;
+            box-shadow: inset -10px -10px 20px rgba(0,0,0,0.1), 0 20px 30px rgba(0,0,0,0.1);
+        }
+        .device-head {
+            position: absolute; top: 0; left: 10px; width: 120px; height: 70px;
+            background: var(--product-brown); border-radius: 60px 60px 20px 20px;
+            box-shadow: inset -5px -5px 15px rgba(0,0,0,0.2);
+        }
+        .device-beak {
+            position: absolute; top: 30px; left: -15px; width: 0; height: 0;
+            border-top: 10px solid transparent; border-bottom: 10px solid transparent; border-right: 20px solid #A39E96;
+        }
+        .device-lens {
+            position: absolute; bottom: 0; left: 45px; width: 50px; height: 20px;
+            background: #111; border-radius: 0 0 25px 25px; display: flex; justify-content: center; align-items: flex-end;
+        }
+        .rainbow-glow {
+            width: 20px; height: 10px;
+            background: linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet);
+            border-radius: 50%; filter: blur(15px); opacity: 0.8;
+            animation: rainbow-glow 3s infinite alternate; transform: translateY(20px) scale(3);
+        }
+        @keyframes rainbow-glow {
+            0% { filter: hue-rotate(0deg) blur(20px); opacity: 0.6; }
+            100% { filter: hue-rotate(360deg) blur(20px); opacity: 0.9; }
+        }
+
+        /* --- 2. AI Detection Section --- */
+        .ai-section { padding: 8rem 0; background-color: var(--surface-color); min-height: 100vh; display: flex; align-items: center; overflow: hidden; }
+        .ai-container { display: flex; flex-direction: column; align-items: center; gap: 4rem; width: 100%; }
+        .ai-text { text-align: center; max-width: 600px; }
+        .ai-text h2 { font-size: 2.5rem; margin-bottom: 1rem; }
+        .ai-text p { font-size: 1.1rem; color: var(--text-muted); }
+        .ai-animation-area { width: 100%; max-width: 800px; height: 500px; position: relative; display: flex; justify-content: center; align-items: center; }
+        .ai-window {
+            width: 100%; height: 100%; background: rgba(0, 0, 0, 0.02); border: 2px solid rgba(0, 0, 0, 0.05);
+            border-radius: 20px; position: relative; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.05);
+        }
+        .ai-rainbow {
+            position: absolute; top: 50%; left: 50%; width: 600px; height: 600px; margin: -300px 0 0 -300px;
+            background: radial-gradient(circle, rgba(255,100,100,0.4), rgba(255,200,100,0.4), rgba(100,255,100,0.4), rgba(100,100,255,0.4), transparent 70%);
+            filter: blur(40px); border-radius: 50%; opacity: 0; transform: scale(0); pointer-events: none;
+        }
+        .ai-bird {
+            position: absolute; top: 50%; left: 50%; width: 80px; height: 80px; margin: -40px 0 0 -40px; z-index: 2;
+        }
+        .ai-bird svg { width: 100%; height: 100%; opacity: 0.8; }
+        .ai-ui {
+            position: absolute; width: 140px; height: 140px; border: 1px solid rgba(74, 144, 226, 0.3);
+            display: flex; justify-content: center; top: -30px; left: -30px; opacity: 0; transform: scale(1.5);
+        }
+        .ai-ui-label {
+            position: absolute; top: -30px; background: #4A90E2; color: white; padding: 4px 12px;
+            border-radius: 12px; font-size: 0.8rem; font-weight: 600;
+        }
+        .ai-corner { position: absolute; width: 15px; height: 15px; border-color: #4A90E2; border-style: solid; }
+        .ai-tl { top: -1px; left: -1px; border-width: 2px 0 0 2px; }
+        .ai-tr { top: -1px; right: -1px; border-width: 2px 2px 0 0; }
+        .ai-bl { bottom: -1px; left: -1px; border-width: 0 0 2px 2px; }
+        .ai-br { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }
+
+        /* --- 3. Product Detail (3D) Section --- */
+        .detail-section { padding: 8rem 0; }
+        .detail-header { text-align: center; max-width: 700px; margin: 0 auto 3rem; }
+        .detail-header h2 { font-size: 2.5rem; margin-bottom: 1rem; }
+        .detail-header p { font-size: 1.1rem; color: var(--text-muted); }
+        .viewer-container {
+            position: relative; width: 100%; height: 60vh; min-height: 500px;
+            background: radial-gradient(circle, var(--surface-color) 0%, var(--bg-color) 70%);
+            border-radius: 30px; overflow: hidden; border: 1px solid rgba(0,0,0,0.05);
+        }
+        #canvas3d { width: 100%; height: 100%; outline: none; }
+        .drag-hint {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.6); color: white; padding: 8px 20px;
+            border-radius: 30px; font-size: 0.85rem; pointer-events: none; backdrop-filter: blur(4px);
+        }
+
+        /* --- 4. Feature Showcase Section --- */
+        .features-section { padding: 8rem 0; background-color: var(--bg-color); }
+        .features-header { text-align: center; margin-bottom: 4rem; }
+        .features-header h2 { font-size: 2.5rem; margin-bottom: 1rem; }
+        .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; }
+        .feature-card { padding: 2.5rem 2rem; cursor: default; transition: transform 0.3s, box-shadow 0.3s; opacity: 0; transform: translateY(50px); }
+        .feature-card:hover { transform: translateY(-10px) !important; box-shadow: 0 20px 40px rgba(0,0,0,0.08); }
+        .f-icon { color: var(--accent-color); margin-bottom: 1.5rem; display: inline-block; padding: 1rem; background: var(--surface-color); border-radius: 20px; font-size: 1.5rem; font-weight: bold; }
+        .feature-card h3 { font-size: 1.25rem; margin-bottom: 1rem; }
+        .feature-card p { color: var(--text-muted); font-size: 0.95rem; }
+
+        /* --- 5. Story Section --- */
+        .story-section {
+            position: relative; min-height: 120vh; display: flex; align-items: center; justify-content: center;
+            background-color: var(--text-main); color: var(--bg-color); overflow: hidden; padding: 10rem 0;
+        }
+        .story-bg { position: absolute; top: -20%; left: 0; width: 100%; height: 140%; pointer-events: none; }
+        .s-orb1 { position: absolute; top: 30%; left: 20%; width: 600px; height: 600px; background: radial-gradient(circle, rgba(187, 165, 143, 0.15) 0%, transparent 70%); border-radius: 50%; filter: blur(60px); }
+        .s-orb2 { position: absolute; bottom: 20%; right: 10%; width: 800px; height: 800px; background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 0%, transparent 70%); border-radius: 50%; filter: blur(80px); }
+        .story-content { position: relative; z-index: 1; text-align: center; max-width: 800px; display: flex; flex-direction: column; gap: 4rem; }
+        .story-quote { font-size: 3rem; font-weight: 300; line-height: 1.4; opacity: 0; transform: translateY(50px); }
+        .story-p { font-size: 1.25rem; color: rgba(255, 255, 255, 0.7); opacity: 0; transform: translateY(50px); }
+        .story-highlight { font-size: 1.5rem; font-weight: 500; color: var(--bg-color); margin-top: 2rem; opacity: 0; transform: translateY(50px); }
+
+        /* --- 6. Installation Section --- */
+        .install-section { padding: 8rem 0; background-color: var(--surface-color); }
+        .install-header { text-align: center; margin-bottom: 4rem; }
+        .install-header h2 { font-size: 2.5rem; margin-bottom: 1rem; }
+        .steps-container { display: flex; justify-content: space-between; gap: 2rem; position: relative; }
+        .steps-container::before {
+            content: ''; position: absolute; top: 40px; left: 10%; right: 10%; height: 2px;
+            background: linear-gradient(90deg, transparent, var(--text-muted), transparent); opacity: 0.2; z-index: 0;
+        }
+        .step-card { flex: 1; display: flex; flex-direction: column; align-items: center; text-align: center; z-index: 1; opacity: 0; transform: translateY(30px); }
+        .step-num {
+            width: 80px; height: 80px; background-color: var(--bg-color); border-radius: 50%;
+            display: flex; justify-content: center; align-items: center; font-size: 1.5rem; font-weight: 700;
+            border: 2px solid var(--accent-color); margin-bottom: 2rem;
+        }
+        .step-card h3 { font-size: 1.25rem; margin-bottom: 1rem; }
+        .step-card p { color: var(--text-muted); font-size: 0.95rem; max-width: 250px; }
+
+        /* --- Footer --- */
+        footer { padding: 6rem 0 2rem; border-top: 1px solid rgba(0,0,0,0.05); }
+        .footer-top { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 2rem; margin-bottom: 4rem; }
+        .footer-brand .logo { margin-bottom: 0.5rem; }
+        .footer-brand p { color: var(--text-muted); font-size: 0.9rem; }
+        .footer-links { display: flex; gap: 4rem; }
+        .footer-group { display: flex; flex-direction: column; gap: 1rem; }
+        .footer-group h4 { font-size: 0.95rem; }
+        .footer-group a { color: var(--text-muted); text-decoration: none; font-size: 0.9rem; }
+        .footer-group a:hover { color: var(--text-main); }
+        .footer-bottom { display: flex; justify-content: space-between; padding-top: 2rem; border-top: 1px solid rgba(0,0,0,0.05); color: var(--text-muted); font-size: 0.85rem; }
+
+        @media (max-width: 768px) {
+            .hero-container, .steps-container { flex-direction: column; text-align: center; }
+            .steps-container::before { display: none; }
+            .hero-title { font-size: 2.5rem; }
+            .story-quote { font-size: 2rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header id="header">
+        <div class="container header-inner">
+            <div class="logo">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 7h.01"/><path d="M3.4 18H12a8 8 0 0 0 8-8V7a4 4 0 0 0-7.28-2.3L2 20"/><path d="m20 7 2 .5-2 .5"/><path d="M10 18v3"/><path d="M14 17.75V21"/><path d="M7 18a6 6 0 0 0 3.84-10.61"/></svg>
+                버디 가디언
+            </div>
+            <nav class="nav-links">
+                <a href="#features">특징</a>
+                <a href="#story">스토리</a>
+                <a href="#installation">설치 방법</a>
+                <button class="buy-btn">구매하기</button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- 1. Hero Section -->
+    <section class="hero" id="hero">
+        <div class="hero-bg-blur"></div>
+        <div class="container hero-container">
+            <div class="hero-content">
+                <span class="hero-badge">새로운 평화의 시작</span>
+                <h1 class="hero-title hero-anim">
+                    유리창 너머의 생명을<br>
+                    <span class="text-gradient">가장 아름답게 지키는 방법.</span>
+                </h1>
+                <p class="hero-desc hero-anim">
+                    AI 비전 기술과 무지개 빛 패턴으로<br>
+                    새들의 안타까운 충돌을 예방하는 스마트 가디언입니다.
+                </p>
+                <div class="hero-anim">
+                    <button class="buy-btn">자세히 보기</button>
+                </div>
+            </div>
+            <div class="hero-visual device-float">
+                <div class="window-mockup">
+                    <div class="device-mockup">
+                        <div class="device-body"></div>
+                        <div class="device-head"><div class="device-beak"></div></div>
+                        <div class="device-lens"><div class="rainbow-glow"></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 2. AI Detection Section -->
+    <section class="ai-section" id="ai-section">
+        <div class="container ai-container">
+            <div class="ai-text">
+                <h2>AI가 지키는 생명의 선</h2>
+                <p>카메라가 창에 접근하는 새를 실시간으로 감지하고,<br>시각적으로 인지 가능한 무지개 빛을 투사하여 충돌을 막습니다.</p>
+            </div>
+            <div class="ai-animation-area">
+                <div class="ai-window">
+                    <div class="ai-rainbow"></div>
+                    <div class="ai-bird">
+                        <svg viewBox="0 0 100 100"><path d="M50 20 Q70 10 90 30 Q70 40 50 40 Q30 40 10 30 Q30 10 50 20" fill="#2A2826" /></svg>
+                        <div class="ai-ui">
+                            <div class="ai-corner ai-tl"></div><div class="ai-corner ai-tr"></div>
+                            <div class="ai-corner ai-bl"></div><div class="ai-corner ai-br"></div>
+                            <span class="ai-ui-label">AI 감지 중</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 3. Product Detail (3D) Section -->
+    <section class="detail-section">
+        <div class="container">
+            <div class="detail-header">
+                <span class="hero-badge">디자인과 기능의 조화</span>
+                <h2>모든 디테일에 담긴 배려</h2>
+                <p>마우스로 제품을 회전하고 확대하여 버디 가디언의 정교한 디자인과<br>혁신적인 기능 요소들을 직접 확인해보세요.</p>
+            </div>
+            <div class="viewer-container">
+                <canvas id="canvas3d"></canvas>
+                <div class="drag-hint">드래그하여 360도 회전</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 4. Feature Showcase Section -->
+    <section class="features-section" id="features">
+        <div class="container">
+            <div class="features-header">
+                <h2>혁신적인 보호 기술</h2>
+                <p style="color: var(--text-muted)">아름다운 디자인 속에 숨겨진 강력한 AI 기술</p>
+            </div>
+            <div class="features-grid">
+                <div class="glass-panel feature-card">
+                    <div class="f-icon">👁️</div>
+                    <h3>AI 기반 새 접근 감지</h3>
+                    <p>고성능 비전 AI가 창문으로 날아오는 새를 실시간으로 정확하게 인식합니다.</p>
+                </div>
+                <div class="glass-panel feature-card">
+                    <div class="f-icon">🌈</div>
+                    <h3>무지개 빛 패턴 투사</h3>
+                    <p>새들이 유리창을 장애물로 인지할 수 있는 특수한 빛 패턴을 유리에 투사합니다.</p>
+                </div>
+                <div class="glass-panel feature-card">
+                    <div class="f-icon">✨</div>
+                    <h3>유리창 흡착 설치 방식</h3>
+                    <p>복잡한 시공 없이 누구나 쉽게 유리창에 흡착 마운트로 붙여서 설치할 수 있습니다.</p>
+                </div>
+                <div class="glass-panel feature-card">
+                    <div class="f-icon">⚡</div>
+                    <h3>실시간 움직임 분석</h3>
+                    <p>새의 비행 경로를 예측하여 가장 효과적인 타이밍에 경고를 보냅니다.</p>
+                </div>
+                <div class="glass-panel feature-card">
+                    <div class="f-icon">🔋</div>
+                    <h3>저전력 설계</h3>
+                    <p>고효율 배터리와 저전력 칩셋으로 선 연결 없이 깔끔하게 사용할 수 있습니다.</p>
+                </div>
+                <div class="glass-panel feature-card">
+                    <div class="f-icon">🍃</div>
+                    <h3>친환경 조류 보호 시스템</h3>
+                    <p>자연과 사람이 공존하는 스마트한 방식으로 조류 생태계를 지킵니다.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 5. Story Section -->
+    <section class="story-section" id="story">
+        <div class="story-bg">
+            <div class="s-orb1"></div>
+            <div class="s-orb2"></div>
+        </div>
+        <div class="container story-content">
+            <h2 class="story-quote">"매년 수억 마리의 새들이<br>투명한 유리창을 하늘로 착각합니다."</h2>
+            <p class="story-p">우리가 만들어낸 아름다운 건축물들이<br>어떤 생명에게는 보이지 않는 벽이 됩니다.</p>
+            <p class="story-p">버디 가디언은 자연과 인간의 공간이<br>평화롭게 공존할 수 있는 방법을 고민했습니다.</p>
+            <p class="story-highlight">작은 빛의 조각들이 모여 생명을 구하는 기적,<br>지금 당신의 창에서 시작됩니다.</p>
+        </div>
+    </section>
+
+    <!-- 6. Installation Section -->
+    <section class="install-section" id="installation">
+        <div class="container">
+            <div class="install-header">
+                <h2>누구나 쉽게, 1분 설치</h2>
+                <p style="color:var(--text-muted)">복잡한 설정이나 공구 없이 바로 사용할 수 있습니다.</p>
+            </div>
+            <div class="steps-container">
+                <div class="step-card">
+                    <div class="step-num">01</div>
+                    <h3>유리창 부착</h3>
+                    <p>강력한 흡착 마운트로 원하는 위치에 기기를 붙입니다.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-num">02</div>
+                    <h3>AI 캘리브레이션</h3>
+                    <p>전원을 켜면 AI가 주변 환경과 유리의 반사율을 자동 분석합니다.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-num">03</div>
+                    <h3>감지 활성화</h3>
+                    <p>초록색 단말 LED가 점등되면 새 보호 시스템이 가동됩니다.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-top">
+                <div class="footer-brand">
+                    <div class="logo">버디 가디언</div>
+                    <p>새와 사람이 공존하는 세상을 만듭니다.</p>
+                </div>
+                <div class="footer-links">
+                    <div class="footer-group">
+                        <h4>제품</h4><a href="#">버디 가디언</a><a href="#">액세서리</a>
+                    </div>
+                    <div class="footer-group">
+                        <h4>고객 지원</h4><a href="#">자주 묻는 질문</a><a href="#">설치 가이드</a><a href="#">문의하기</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Birdy Guardian. All rights reserved.</p>
+                <div style="display:flex;gap:1.5rem;"><a href="#" style="color:inherit;text-decoration:none;">개인정보처리방침</a><a href="#" style="color:inherit;text-decoration:none;">이용약관</a></div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script>
+        // 1. Lenis Smooth Scroll
+        const lenis = new Lenis({ duration: 1.2, easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)) });
+        function raf(time) { lenis.raf(time); requestAnimationFrame(raf); }
+        requestAnimationFrame(raf);
+
+        // 2. Header Scroll Effect
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 50) document.getElementById('header').classList.add('scrolled');
+            else document.getElementById('header').classList.remove('scrolled');
+        });
+
+        gsap.registerPlugin(ScrollTrigger);
+
+        // 3. Hero Animations
+        gsap.from(".hero-badge", { y: 20, opacity: 0, duration: 0.8, delay: 0.1 });
+        gsap.from(".hero-anim", { y: 50, opacity: 0, duration: 1, stagger: 0.2, ease: "power3.out", delay: 0.2 });
+        gsap.from(".device-float", { y: 30, opacity: 0, scale: 0.95, duration: 1.2, ease: "power2.out", delay: 0.6 });
+        gsap.to(".device-float", { y: -15, duration: 2.5, repeat: -1, yoyo: true, ease: "sine.inOut" });
+
+        // 4. AI Detection Motion
+        const tlAI = gsap.timeline({ scrollTrigger: { trigger: "#ai-section", start: "top center", end: "bottom center", scrub: 1 } });
+        tlAI.fromTo(".ai-bird", { x: -300, y: -200, scale: 0.5, opacity: 0 }, { x: 0, y: 0, scale: 1, opacity: 1, duration: 1 })
+            .fromTo(".ai-ui", { opacity: 0, scale: 1.5 }, { opacity: 1, scale: 1, duration: 0.5 })
+            .fromTo(".ai-rainbow", { scale: 0, opacity: 0 }, { scale: 1, opacity: 0.8, duration: 1, ease: "power2.out" })
+            .to(".ai-bird", { x: 300, y: -200, scale: 0.8, rotation: 45, opacity: 0, duration: 1 });
+
+        // 5. Feature Cards Animation
+        gsap.utils.toArray('.feature-card').forEach((card, i) => {
+            gsap.to(card, { scrollTrigger: { trigger: "#features", start: "top 70%" }, y: 0, opacity: 1, duration: 0.6, delay: i * 0.1, ease: "power2.out" });
+        });
+
+        // 6. Story Section Parallax & Text
+        gsap.to(".story-bg", { yPercent: 30, ease: "none", scrollTrigger: { trigger: "#story", start: "top bottom", end: "bottom top", scrub: true } });
+        gsap.to(".story-quote", { scrollTrigger: { trigger: "#story", start: "top 50%", end: "center center", scrub: 1 }, y: 0, opacity: 1, duration: 1 });
+        gsap.to(".story-p", { scrollTrigger: { trigger: "#story", start: "top 40%", end: "center center", scrub: 1 }, y: 0, opacity: 1, duration: 1, stagger: 0.5 });
+        gsap.to(".story-highlight", { scrollTrigger: { trigger: "#story", start: "top 20%", end: "center center", scrub: 1 }, y: 0, opacity: 1, duration: 1 });
+
+        // 7. Installation Steps
+        gsap.utils.toArray('.step-card').forEach((card, i) => {
+            gsap.to(card, { scrollTrigger: { trigger: "#installation", start: "top 70%" }, y: 0, opacity: 1, duration: 0.8, delay: i * 0.2, ease: "power2.out" });
+        });
+
+        // 8. Three.js 3D Viewer (Proxy Model)
+        const init3D = () => {
+            const canvas = document.getElementById('canvas3d');
+            const scene = new THREE.Scene();
+            // Match the background gradient feeling
+            scene.background = new THREE.Color('#F5F3EC'); 
+            
+            const camera = new THREE.PerspectiveCamera(45, canvas.clientWidth / canvas.clientHeight, 0.1, 100);
+            camera.position.set(4, 2, 5);
+
+            const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+            renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+
+            const controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.enablePan = false;
+            controls.minPolarAngle = Math.PI / 3;
+            controls.maxPolarAngle = Math.PI / 1.5;
+
+            // Lights
+            const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambient);
+            const spotLight = new THREE.SpotLight(0xffffff, 0.8);
+            spotLight.position.set(10, 10, 10);
+            spotLight.castShadow = true;
+            scene.add(spotLight);
+
+            // Proxy Model Group
+            const group = new THREE.Group();
+            
+            // Materials
+            const beigeMat = new THREE.MeshStandardMaterial({ color: 0xE6DFD3, roughness: 0.4 });
+            const brownMat = new THREE.MeshStandardMaterial({ color: 0x7A6250, roughness: 0.6 });
+            const darkMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.1 });
+            const whiteMat = new THREE.MeshStandardMaterial({ color: 0xFFFFFF, roughness: 0.3 });
+
+            // Bottom body
+            const bodyGeo = new THREE.SphereGeometry(1.5, 64, 64, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2);
+            const bodyMesh = new THREE.Mesh(bodyGeo, beigeMat);
+            bodyMesh.castShadow = true;
+            group.add(bodyMesh);
+
+            // Top head
+            const headGeo = new THREE.SphereGeometry(1.5, 64, 64, 0, Math.PI * 2, 0, Math.PI / 2);
+            const headMesh = new THREE.Mesh(headGeo, brownMat);
+            headMesh.castShadow = true;
+            group.add(headMesh);
+
+            // Beak
+            const beakGeo = new THREE.ConeGeometry(0.3, 0.6, 32);
+            const beakMesh = new THREE.Mesh(beakGeo, new THREE.MeshStandardMaterial({ color: 0xA39E96 }));
+            beakMesh.position.set(0, 0.2, 1.4);
+            beakMesh.rotation.x = Math.PI / 2;
+            group.add(beakMesh);
+
+            // Camera Lens
+            const lensGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.1, 32);
+            const lensMesh = new THREE.Mesh(lensGeo, darkMat);
+            lensMesh.position.set(0, -1.45, 0);
+            group.add(lensMesh);
+
+            // Mount Stick
+            const stickGeo = new THREE.CylinderGeometry(0.2, 0.2, 1.5, 32);
+            const stickMesh = new THREE.Mesh(stickGeo, brownMat);
+            stickMesh.position.set(0, 0, -1.5);
+            stickMesh.rotation.x = Math.PI / 2;
+            group.add(stickMesh);
+
+            // Suction Cup
+            const cupGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.2, 32);
+            const cupMesh = new THREE.Mesh(cupGeo, whiteMat);
+            cupMesh.position.set(0, 0, -2.3);
+            cupMesh.rotation.x = Math.PI / 2;
+            group.add(cupMesh);
+
+            scene.add(group);
+
+            let time = 0;
+            function animate() {
+                requestAnimationFrame(animate);
+                controls.update();
+                
+                // Float animation for 3D model
+                time += 0.02;
+                group.position.y = Math.sin(time) * 0.1;
+                group.rotation.y = Math.sin(time * 0.5) * 0.1;
+
+                renderer.render(scene, camera);
+            }
+            animate();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = canvas.clientWidth / canvas.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+            });
+        };
+        
+        // Initialize 3D when loaded
+        window.addEventListener('load', init3D);
+
+    </script>
+</body>
+</html>
